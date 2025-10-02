@@ -31,7 +31,7 @@ async function getAccessToken() {
 async function fetchClubActivities() {
   const token = await getAccessToken();
   const response = await axios.get(`https://www.strava.com/api/v3/clubs/${config.clubId}/activities`, {
-    params: { per_page: 50, page: 1 },
+    params: { per_page: 42, page: 1 },
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json'

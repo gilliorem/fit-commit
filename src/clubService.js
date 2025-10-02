@@ -3,12 +3,10 @@ const { fetchClubActivities } = require('./stravaClient');
 function formatActivity(activity) {
   const distanceKm = activity.distance != null ? activity.distance / 1000 : 0;
 const time = activity.moving_time;
-	console.log(time);
   const avgSpeedKmh = (distanceKm / (time / 60)) * 60;
-	console.log(avgSpeedKmh);
   const firstName = activity.athlete?.firstname || '';
   const lastName = activity.athlete?.lastname || '';
-  const name = `${firstName} ${lastName}`.trim() || activity.name || 'Unknown athlete';
+  const name = `${firstName} ${lastName}`.trim() || activity.name || '???';
 
   return {
     name,
