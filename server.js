@@ -3,6 +3,7 @@ require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
 const express = require('express');
 const { getClubLeaderboard } = require('./src/clubService');
+const { getTeams } = require('./src/teamService');
 const { getCachedActivities } = require('./src/stravaClient');
 
 const app = express();
@@ -12,14 +13,25 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/club/activities', async (req, res) => {
   try {
-    const activities = await getClubLeaderboard();
+    const { leaderboard, event } = await getClubLeaderboard();
     res.json({
-      activities,
+      activities: leaderboard,
+      event,
       cachedAt: getCachedActivities().timestamp
     });
   } catch (error) {
     console.error('Failed to fetch club activities', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to fetch club activities from Strava.' });
+  }
+});
+
+app.get('/api/teams', (req, res) => {
+  try {
+    const teams = getTeams();
+    res.json({ teams });
+  } catch (error) {
+    console.error('Failed to load teams configuration', error.message);
+    res.status(500).json({ error: 'Failed to load teams configuration.' });
   }
 });
 
