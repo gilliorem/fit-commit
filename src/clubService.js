@@ -32,6 +32,26 @@ function parseActivityTimestamp(activity) {
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
+function asTimestamp(value) {
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+
+  if (value != null) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function isoFromTimestamp(timestamp) {
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
 function aggregateActivities(activities, sinceTimestamp, untilTimestamp) {
   const athletes = new Map();
   const lowerBound = Number.isFinite(sinceTimestamp) ? sinceTimestamp : null;
@@ -137,28 +157,22 @@ function aggregateActivities(activities, sinceTimestamp, untilTimestamp) {
 async function getClubLeaderboard() {
   const activities = await fetchClubActivities();
   const eventWindow = getEventWindow();
-  const eventStart = eventWindow.start instanceof Date && !Number.isNaN(eventWindow.start.getTime()) ? eventWindow.start : null;
-  const eventEnd = eventWindow.end instanceof Date && !Number.isNaN(eventWindow.end.getTime()) ? eventWindow.end : null;
-  const sinceTimestamp = eventWindow.startIsExplicit && eventStart ? eventStart.getTime() : null;
-  const untilTimestamp = eventWindow.endIsExplicit && eventEnd ? eventEnd.getTime() : null;
+  const sinceTimestamp = asTimestamp(eventWindow?.start);
+  const untilTimestamp = asTimestamp(eventWindow?.end);
 
   let stats = aggregateActivities(activities, sinceTimestamp, untilTimestamp);
-  let eventStartIso = eventWindow.startIsExplicit && eventStart ? eventStart.toISOString() : null;
-  let eventEndIso = eventWindow.endIsExplicit && eventEnd ? eventEnd.toISOString() : null;
 
-  if (stats.leaderboard.length === 0 && (sinceTimestamp != null || untilTimestamp != null)) {
+  if (!stats.leaderboard.length && (sinceTimestamp != null || untilTimestamp != null)) {
     stats = aggregateActivities(activities, null, null);
-    eventStartIso = null;
-    eventEndIso = null;
   }
 
-  if (!eventStartIso && stats.earliestTimestamp != null) {
-    eventStartIso = new Date(stats.earliestTimestamp).toISOString();
-  }
+  const eventStartIso = sinceTimestamp != null
+    ? isoFromTimestamp(sinceTimestamp)
+    : isoFromTimestamp(stats.earliestTimestamp);
 
-  if (!eventEndIso && stats.latestTimestamp != null) {
-    eventEndIso = new Date(stats.latestTimestamp).toISOString();
-  }
+  const eventEndIso = untilTimestamp != null
+    ? isoFromTimestamp(untilTimestamp)
+    : isoFromTimestamp(stats.latestTimestamp);
 
   return {
     leaderboard: stats.leaderboard,

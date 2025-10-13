@@ -5,76 +5,340 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>42 Fit Commit Leaderboard</title>
     <style>
+      :root {
+        color-scheme: dark;
+        --bg-primary: #040b16;
+        --bg-elevated: rgba(11, 22, 40, 0.72);
+        --bg-card: rgba(9, 19, 32, 0.88);
+        --text-primary: #eef6ff;
+        --text-secondary: #8ba1c4;
+        --accent: #22d4d9;
+        --accent-soft: rgba(34, 212, 217, 0.2);
+        --accent-strong: rgba(34, 212, 217, 0.55);
+        --border: rgba(55, 95, 124, 0.45);
+        --shadow: 0 24px 60px rgba(4, 8, 20, 0.55);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
-        font-family: Roboto, sans-serif;
-        margin: 2rem;
-        background: #f5f5f5;
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 20% -10%, rgba(34, 212, 217, 0.18), transparent 40%),
+          radial-gradient(circle at 85% 0%, rgba(0, 132, 255, 0.14), transparent 46%),
+          var(--bg-primary);
+        color: var(--text-primary);
+        font-family: 'Rajdhani', 'Segoe UI', 'Roboto', sans-serif;
+        display: flex;
+        justify-content: center;
+        padding: 3rem 1.5rem 4rem;
       }
+
+      .app-shell {
+        width: min(1200px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+      }
+
+      .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.5rem 1.75rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .brand-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 1.5rem;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+        border: 1px solid var(--accent-strong);
+        background: var(--accent-soft);
+        box-shadow: 0 16px 40px rgba(34, 212, 217, 0.25);
+      }
+
       h1 {
-        margin-bottom: 1rem;
+        margin: 0;
+        font-size: 1.85rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
       }
-      #status {
-        margin-bottom: 1rem;
-        color: #555;
+
+      .status-chip {
+        margin-left: auto;
+        font-size: 0.85rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid var(--accent-strong);
+        background: var(--accent-soft);
+        color: var(--accent);
+        transition: opacity 0.2s ease;
       }
-      #event-window {
-        margin-bottom: 1.5rem;
-        color: #333;
+
+      .status-chip:empty {
+        display: none;
       }
+
+      .status-chip--error {
+        color: #ff7a94;
+        border-color: rgba(255, 122, 148, 0.45);
+        background: rgba(255, 122, 148, 0.18);
+      }
+
+      .event-window {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem 1.75rem;
+        box-shadow: var(--shadow);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        backdrop-filter: blur(16px);
+      }
+
+      .event-window:empty {
+        display: none;
+      }
+
+      .panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.75rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .panel h2 {
+        margin: 0 0 1.25rem;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--text-secondary);
+      }
+
+      .top-teams {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .top-team-node {
+        --circle-size: 180px;
+        --progress: 0;
+        position: relative;
+        width: var(--circle-size);
+        height: var(--circle-size);
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 30% 30%, rgba(34, 212, 217, 0.5), transparent 70%),
+          rgba(7, 18, 32, 0.9);
+        box-shadow: 0 24px 45px rgba(0, 0, 0, 0.45);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 1.5rem 1rem;
+        backdrop-filter: blur(18px);
+        z-index: 0;
+      }
+
+      .top-team-node::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid rgba(34, 212, 217, 0.25);
+        z-index: -2;
+      }
+
+      .top-team-node::after {
+        content: '';
+        position: absolute;
+        inset: -12px;
+        border-radius: 50%;
+        background: conic-gradient(
+          rgba(34, 212, 217, 0.9) calc(var(--progress) * 360deg),
+          rgba(34, 212, 217, 0.1) 0deg
+        );
+        -webkit-mask: radial-gradient(circle, transparent calc(50% - 12px), black calc(50% - 11px));
+        mask: radial-gradient(circle, transparent calc(50% - 12px), black calc(50% - 11px));
+        z-index: -1;
+      }
+
+      .top-team-rank {
+        font-size: 0.85rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 0.35rem;
+      }
+
+      .top-team-name {
+        font-size: 1.15rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+      }
+
+      .top-team-distance {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+      }
+
       .leaderboard-table {
         width: 100%;
         border-collapse: collapse;
-        background: #fff;
       }
+
       .leaderboard-table th,
       .leaderboard-table td {
-        border: 1px solid #ddd;
-        padding: 0.5rem 0.75rem;
+        padding: 0.75rem 0.9rem;
         text-align: left;
       }
+
       .leaderboard-table th {
-        background: #f0f0f0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary);
       }
-      .leaderboard-table tbody tr:nth-child(even) {
-        background: #fafafa;
+
+      .leaderboard-table td {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       }
-      .leaderboard-section {
-        margin-bottom: 2rem;
+
+      .leaderboard-table .highlight-team td {
+        color: var(--accent);
+        font-weight: 600;
       }
-      .leaderboard-section h2 {
-        margin-bottom: 0.75rem;
+
+      .leaderboard-table tbody tr {
+        background: rgba(15, 32, 49, 0.35);
+        transition: background 0.2s ease;
       }
+
+      .leaderboard-table tbody tr:nth-child(odd) {
+        background: rgba(15, 32, 49, 0.22);
+      }
+
+      .leaderboard-table tbody tr:hover {
+        background: rgba(34, 212, 217, 0.14);
+      }
+
       .teams-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
       }
+
       .team-card {
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        background:
+          radial-gradient(circle at top, rgba(34, 212, 217, 0.18), transparent 60%),
+          rgba(10, 21, 35, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.4rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
       }
+
       .team-card h3 {
-        margin-top: 0;
-        margin-bottom: 0.75rem;
-        font-size: 1.1rem;
+        margin: 0 0 1rem;
+        font-size: 0.95rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
       }
+
       .team-card table {
         width: 100%;
+      }
+
+      .placeholder {
+        opacity: 0.6;
+        font-style: italic;
+        color: var(--text-secondary);
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 2rem 1rem 3rem;
+        }
+
+        .app-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
+        }
+
+        .status-chip {
+          margin-left: 0;
+        }
+
+        .panel {
+          padding: 1.5rem;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>42 Fit Commit Leaderboard</h1>
-    <div id="status">Loading activities…</div>
-    <div id="event-window"></div>
-    <section id="global-leaderboard" class="leaderboard-section"></section>
-    <section class="leaderboard-section">
-      <h2>Team Leaderboards</h2>
-      <div id="teams-container" class="teams-grid"></div>
-    </section>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-mark">42</span>
+          <h1>Fit Commit Leaderboard</h1>
+        </div>
+        <div id="status" class="status-chip">Loading activities…</div>
+      </header>
+
+      <section id="event-window" class="event-window"></section>
+
+      <section id="global-leaderboard" class="panel">
+        <h2>Team Overview</h2>
+        <div id="top-teams" class="top-teams"></div>
+        <div id="global-team-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Team Leaderboards</h2>
+        <div id="teams-container" class="teams-grid"></div>
+      </section>
+    </div>
 
     <script>
       function formatEventDate(isoString) {
@@ -144,6 +408,18 @@
           .filter(Boolean);
       }
 
+      const TRACKED_MEMBER_NAMES = [
+        'JJ Su',
+        'Chris Wan',
+        'Neoprana Soemardjan',
+        'Abel L',
+        'Li Qian Teng',
+        'Louisa N',
+        'Timberley Ng',
+        'Sebby Wong',
+        'F Lim'
+      ];
+
       function buildAthleteIndex(athletes) {
         const byFull = new Map();
         const byFirst = new Map();
@@ -195,6 +471,15 @@
         return { byFull, byFirst, byLast, byToken };
       }
 
+      function updateStatus(element, message, tone = 'default') {
+        if (!element) {
+          return;
+        }
+
+        element.classList.toggle('status-chip--error', tone === 'error');
+        element.textContent = message || '';
+      }
+
       function findUniqueCandidate(candidates, usedIds) {
         if (!Array.isArray(candidates)) {
           return null;
@@ -227,6 +512,11 @@
           if (candidateToken.startsWith(memberToken) || memberToken.startsWith(candidateToken)) {
             return 1; // prefix / abbreviation match
           }
+          const memberPrefix = memberToken.slice(0, 3);
+          const candidatePrefix = candidateToken.slice(0, 3);
+          if (memberPrefix === candidatePrefix) {
+            return 1; // shared leading syllable
+          }
         }
 
         return 0;
@@ -256,7 +546,6 @@
         const matchedTokens = exactMatches + prefixMatches;
         const coversAll = matchedTokens === memberTokens.length && memberTokens.length > 0;
         const score = exactMatches * 3 + prefixMatches + (coversAll ? 1 : 0);
-
         return { score, exactMatches, prefixMatches, coversAll };
       }
 
@@ -282,7 +571,91 @@
         const bestExact = Math.max(...top.map((entry) => entry.exactMatches));
         const exactWinners = top.filter((entry) => entry.exactMatches === bestExact);
 
-        return exactWinners.length === 1 ? exactWinners[0].candidate : null;
+        if (exactWinners.length === 1) {
+          return exactWinners[0].candidate;
+        }
+
+        return exactWinners[0]?.candidate || top[0]?.candidate || null;
+      }
+
+      function scoreTokens(candidateTokens, targetTokens) {
+        return targetTokens.reduce((total, token) => {
+          const tokenScore = candidateTokens.reduce(
+            (best, candidateToken) => Math.max(best, tokenSimilarity(token, candidateToken)),
+            0
+          );
+          return total + tokenScore;
+        }, 0);
+      }
+
+      function findTrackedAthlete(trackedTokens, athletes) {
+        if (!Array.isArray(trackedTokens) || trackedTokens.length === 0) {
+          return null;
+        }
+
+        const scored = athletes
+          .map((athlete) => {
+            const tokens = tokenize(athlete.name || `${athlete.firstName || ''} ${athlete.lastName || ''}`);
+            return { athlete, score: scoreTokens(tokens, trackedTokens) };
+          })
+          .filter((entry) => entry.score > 0);
+
+        if (scored.length === 0) {
+          return null;
+        }
+
+        return scored.reduce((best, current) => (current.score > best.score ? current : best)).athlete;
+      }
+
+      function reportTrackedMembers(teamsWithStats, athletes) {
+        if (!Array.isArray(teamsWithStats) || !Array.isArray(athletes)) {
+          return;
+        }
+
+        const trackedTokensMap = new Map(
+          TRACKED_MEMBER_NAMES.map((name) => [normaliseName(name), tokenize(name)])
+        );
+
+        const summaries = TRACKED_MEMBER_NAMES.map((rawName) => {
+          const key = normaliseName(rawName);
+          const tokens = trackedTokensMap.get(key) || [];
+
+          const membershipHits = [];
+          teamsWithStats.forEach((team) => {
+            team.members.forEach((member) => {
+              if (normaliseName(member.memberName) === key) {
+                membershipHits.push({
+                  team: team.name,
+                  matched: Boolean(member.athlete),
+                  athleteName: member.athlete?.name || null
+                });
+              }
+            });
+          });
+
+          const matchedEntry = membershipHits.find((entry) => entry.matched);
+          const fallbackAthlete = matchedEntry ? null : findTrackedAthlete(tokens, athletes);
+
+          return {
+            name: rawName,
+            presentInTeams: membershipHits.length > 0,
+            matchedTeam: matchedEntry ? matchedEntry.team : null,
+            matchedAthlete: matchedEntry?.athleteName || fallbackAthlete?.name || null
+          };
+        });
+
+        if (summaries.some((entry) => entry.presentInTeams || entry.matchedAthlete)) {
+          console.groupCollapsed('Tracked member cross-check');
+          summaries.forEach((entry) => {
+            const message = entry.presentInTeams
+              ? `in ${entry.matchedTeam || 'team list'}, matched=${Boolean(entry.matchedAthlete)}`
+              : entry.matchedAthlete
+                ? `not in CSV, but activity matches ${entry.matchedAthlete}`
+                : 'not found in teams or activities';
+            console.log(`%c${entry.name}`, 'color: #22d4d9;', message);
+          });
+          console.groupEnd();
+        }
       }
 
       function gatherTokenCandidates(tokens, index, usedIds) {
@@ -342,6 +715,19 @@
           return firstMatch.athlete;
         }
 
+        if (tokens.length >= 2) {
+          const initialToken = tokens[tokens.length - 1];
+          if (initialToken.length === 1 && firstToken) {
+            const candidates = (index.byFirst.get(firstToken) || []).filter(
+              (candidate) => !usedIds.has(candidate.athlete.athleteId)
+            );
+            const initialMatches = candidates.filter((candidate) => candidate.lastToken.startsWith(initialToken));
+            if (initialMatches.length === 1) {
+              return initialMatches[0].athlete;
+            }
+          }
+        }
+
         if (lastToken) {
           const lastMatch = findUniqueCandidate(index.byLast.get(lastToken), usedIds);
           if (lastMatch) {
@@ -386,16 +772,45 @@
         });
       }
 
-      function renderGlobalLeaderboard(container, teams) {
+      function renderTopTeams(container, teams) {
+        if (!container) {
+          return;
+        }
+
+        if (teams.length === 0) {
+          container.innerHTML = '<p class="placeholder">No team activity yet.</p>';
+          return;
+        }
+
+        container.innerHTML = teams
+          .map((team, index) => {
+            const ratio = Math.min(team.totalDistance / 420, 1);
+            const size = Math.round(140 + ratio * 100);
+
+            return `
+              <div class="top-team-node" style="--circle-size:${size}px; --progress:${ratio}">
+                <div class="top-team-rank">#${index + 1}</div>
+                <div class="top-team-name">${team.name}</div>
+                <div class="top-team-distance">${team.totalDistance.toFixed(1)} km</div>
+              </div>
+            `;
+          })
+          .join('');
+      }
+
+      function renderTeamDistanceList(container, teams, highlightedNames) {
+        if (!container) {
+          return;
+        }
+
         if (teams.length === 0) {
           container.innerHTML = '';
           return;
         }
 
-        const sorted = [...teams].sort((a, b) => b.totalDistance - a.totalDistance);
+        const highlight = new Set(highlightedNames);
 
         container.innerHTML = `
-          <h2>Global Team Standings</h2>
           <table class="leaderboard-table">
             <thead>
               <tr>
@@ -404,15 +819,17 @@
               </tr>
             </thead>
             <tbody>
-              ${sorted
-                .map(
-                  (team) => `
-                    <tr>
-                      <td>${team.name}</td>
+              ${teams
+                .map((team) => {
+                  const isHighlight = highlight.has(team.name);
+                  const label = isHighlight ? `${team.name} •` : team.name;
+                  return `
+                    <tr${isHighlight ? ' class="highlight-team"' : ''}>
+                      <td>${label}</td>
                       <td>${team.totalDistance.toFixed(2)}</td>
                     </tr>
-                  `
-                )
+                  `;
+                })
                 .join('')}
             </tbody>
           </table>
@@ -438,9 +855,9 @@
                       if (!member.athlete) {
                         return `
                           <tr>
-                            <td>${member.displayName}</td>
-                            <td>--</td>
-                            <td>--</td>
+                            <td class="placeholder">${member.displayName}</td>
+                            <td class="placeholder">--</td>
+                            <td class="placeholder">--</td>
                           </tr>
                         `;
                       }
@@ -473,8 +890,11 @@
         const status = document.getElementById('status');
         const eventWindow = document.getElementById('event-window');
         const globalContainer = document.getElementById('global-leaderboard');
+        const topTeamsContainer = document.getElementById('top-teams');
+        const globalTeamList = document.getElementById('global-team-list');
         const teamsContainer = document.getElementById('teams-container');
 
+        updateStatus(status, 'Loading activities…');
         eventWindow.textContent = '';
         try {
           const [activitiesPayload, teamsPayload] = await Promise.all([
@@ -488,7 +908,7 @@
           eventWindow.textContent = buildEventWindowLabel(activitiesPayload.event);
 
           if (teams.length === 0) {
-            status.textContent = 'No teams configured yet.';
+            updateStatus(status, 'No teams configured yet.');
             globalContainer.innerHTML = '';
             teamsContainer.innerHTML = '';
             return;
@@ -497,16 +917,23 @@
           const teamsWithStats = buildTeamStats(teams, athletes);
 
           if (athletes.length === 0) {
-            status.textContent = 'No walk or run activities found.';
+            updateStatus(status, 'No walk or run activities found.');
           } else {
-            status.textContent = '';
+            updateStatus(status, '');
           }
 
-          renderGlobalLeaderboard(globalContainer, teamsWithStats);
+          const sortedByDistance = [...teamsWithStats].sort((a, b) => b.totalDistance - a.totalDistance);
+          const topTeams = sortedByDistance.slice(0, 3);
+          const topTeamNames = topTeams.map((team) => team.name);
+          const remainingChronological = teamsWithStats.filter((team) => !topTeamNames.includes(team.name));
+
+          renderTopTeams(topTeamsContainer, topTeams);
+          renderTeamDistanceList(globalTeamList, [...topTeams, ...remainingChronological], topTeamNames);
           renderTeams(teamsContainer, teamsWithStats);
+          reportTrackedMembers(teamsWithStats, athletes);
         } catch (error) {
           console.error(error);
-          status.textContent = 'Could not load leaderboard data. Please try again later.';
+          updateStatus(status, 'Could not load leaderboard data. Please try again later.', 'error');
           eventWindow.textContent = '';
         }
       }

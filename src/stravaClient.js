@@ -6,6 +6,63 @@ let accessTokenExpiresAt = 0;
 let cachedActivities = [];
 let cachedAt = 0;
 
+const DEFAULT_PAGE_SIZE = (() => {
+  const parsed = Number.parseInt(process.env.STRAVA_FETCH_PAGE_SIZE, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(parsed, 200);
+  }
+  return 171; // tuned so the single-page response ends at Remi's baseline activity
+})();
+
+const DEFAULT_MAX_PAGES = (() => {
+  const parsed = Number.parseInt(process.env.STRAVA_FETCH_MAX_PAGES, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(parsed, 10);
+  }
+  return 5;
+})();
+
+const BASELINE_ATHLETE = (process.env.STRAVA_BASELINE_ATHLETE || 'Remi Gilliot').trim().toLowerCase();
+const BASELINE_DISTANCE_METERS = (() => {
+  const parsed = Number.parseFloat(process.env.STRAVA_BASELINE_DISTANCE_METERS);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return 1040; // 1.04 km default
+})();
+
+const BASELINE_DISTANCE_TOLERANCE_METERS = (() => {
+  const parsed = Number.parseFloat(process.env.STRAVA_BASELINE_DISTANCE_TOLERANCE_METERS);
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    return parsed;
+  }
+  return 60; // allow minor GPS drift
+})();
+
+function matchesBaselineActivity(activity) {
+  if (!activity) {
+    return false;
+  }
+
+  const athlete = activity.athlete || {};
+  const name = `${(athlete.firstname || '').trim()} ${(athlete.lastname || '').trim()}`
+    .trim()
+    .toLowerCase();
+  const username = (athlete.username || '').trim().toLowerCase();
+  const candidate = name || username;
+
+  if (!candidate.includes(BASELINE_ATHLETE)) {
+    return false;
+  }
+
+  const distance = Number(activity.distance);
+  if (!Number.isFinite(distance)) {
+    return false;
+  }
+
+  return Math.abs(distance - BASELINE_DISTANCE_METERS) <= BASELINE_DISTANCE_TOLERANCE_METERS;
+}
+
 async function refreshAccessToken() {
   const response = await axios.post('https://www.strava.com/oauth/token', {
     client_id: config.clientId,
@@ -30,16 +87,73 @@ async function getAccessToken() {
 
 async function fetchClubActivities() {
   const token = await getAccessToken();
-  const response = await axios.get(`https://www.strava.com/api/v3/clubs/${config.clubId}/activities`, {
-    params: { per_page: 42, page: 1 },
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json'
+  const perPage = DEFAULT_PAGE_SIZE;
+  const maxPages = DEFAULT_MAX_PAGES;
+  const aggregated = [];
+  let pagesFetched = 0;
+  let baselineFound = false;
+
+  const trimToBaseline = () => {
+    const index = aggregated.findIndex((activity) => matchesBaselineActivity(activity));
+    if (index >= 0) {
+      aggregated.splice(index + 1);
+      baselineFound = true;
     }
-  });
-  cachedActivities = response.data;
+  };
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const response = await axios.get(`https://www.strava.com/api/v3/clubs/${config.clubId}/activities`, {
+      params: { per_page: perPage, page },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json'
+      }
+    });
+
+    const activities = Array.isArray(response.data) ? response.data : [];
+    aggregated.push(...activities);
+    pagesFetched += 1;
+
+    if (!baselineFound) {
+      trimToBaseline();
+    }
+
+    const reachedEnd = activities.length < perPage;
+    const reachedLimit = page === maxPages;
+
+    if (baselineFound) {
+      break;
+    }
+
+    if (!baselineFound && (reachedEnd || reachedLimit)) {
+      break;
+    }
+  }
+
+  if (!baselineFound) {
+    trimToBaseline();
+  }
+
+  cachedActivities = aggregated;
   cachedAt = Date.now();
-  return response.data;
+  const uniqueAthleteCount = aggregated.reduce((set, activity) => {
+    const athlete = activity?.athlete || {};
+    const identifier = athlete.id != null
+      ? String(athlete.id).trim()
+      : `${(athlete.firstname || '').trim()} ${(athlete.lastname || '').trim()}`.trim();
+    if (identifier && identifier !== '-') {
+      set.add(identifier.toLowerCase());
+    }
+    return set;
+  }, new Set()).size;
+  console.log(
+    `[Strava] Retrieved ${aggregated.length} activities across ${pagesFetched} page(s). ` +
+      `Baseline found: ${baselineFound}. Unique athletes: ${uniqueAthleteCount}`
+  );
+  if (!baselineFound) {
+    console.warn('[Strava] Baseline activity was not found in the fetched pages.');
+  }
+  return aggregated;
 }
 
 function getCachedActivities() {

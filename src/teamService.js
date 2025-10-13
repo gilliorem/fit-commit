@@ -3,6 +3,11 @@ const path = require('path');
 
 const TEAMS_CSV_PATH = path.join(__dirname, '..', 'data', 'teams.csv');
 
+const TEAM_OVERRIDES = {
+  'Team 5': ['F Lim', 'Sin Chee Tan', 'Yuchi Chen', 'taung', 'Daryl Ong'],
+  'Team 19': ['Kaung Myat San', 'Elizabeth Foo', 'Yip Fai Evin Lau', 'Shivani Mariappan', 'xyeo']
+};
+
 function normaliseCell(cell) {
   return cell.replace(/\r/g, '').trim();
 }
@@ -43,7 +48,16 @@ function parseTeamsCsv(content) {
 
 function getTeams() {
   const csv = fs.readFileSync(TEAMS_CSV_PATH, 'utf8');
-  return parseTeamsCsv(csv);
+  const teams = parseTeamsCsv(csv);
+
+  teams.forEach((team) => {
+    const override = TEAM_OVERRIDES[team.name];
+    if (Array.isArray(override) && override.length) {
+      team.members = override.slice(0, 5);
+    }
+  });
+
+  return teams;
 }
 
 module.exports = {
