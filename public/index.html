@@ -146,19 +146,19 @@
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 2rem;
+        gap: 3rem;
         margin-bottom: 2rem;
       }
 
       .top-team-node {
-        --circle-size: 180px;
+        --circle-size: 300;
         --progress: 0;
         position: relative;
         width: var(--circle-size);
         height: var(--circle-size);
         border-radius: 50%;
         background:
-          radial-gradient(circle at 30% 30%, rgba(34, 212, 217, 0.5), transparent 70%),
+          radial-gradient(circle at 30% 30%, rgba(34, 222, 217, 0.5), transparent 70%),
           rgba(7, 18, 32, 0.9);
         box-shadow: 0 24px 45px rgba(0, 0, 0, 0.45);
         display: flex;
@@ -190,21 +190,22 @@
           rgba(34, 212, 217, 0.1) 0deg
         );
         -webkit-mask: radial-gradient(circle, transparent calc(50% - 12px), black calc(50% - 11px));
-        mask: radial-gradient(circle, transparent calc(50% - 12px), black calc(50% - 11px));
+        mask: radial-gradient(circle, transparent calc(50% - 8), black calc(50% - 11px));
         z-index: -1;
       }
 
       .top-team-rank {
-        font-size: 0.85rem;
+        font-size: 1.5rem;
+        font-weight: 800;
         letter-spacing: 0.22em;
         text-transform: uppercase;
         color: var(--text-secondary);
-        margin-bottom: 0.35rem;
+        margin-bottom: 1.55rem;
       }
 
       .top-team-name {
-        font-size: 1.15rem;
-        font-weight: 600;
+        font-size: 1.3;
+        font-weight: 700;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--accent);
@@ -212,8 +213,26 @@
       }
 
       .top-team-distance {
-        font-size: 0.9rem;
+        font-size: 1.5rem;
         color: var(--text-primary);
+        margin-bottom: 0.75rem;
+      }
+
+      .top-team-members {
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        max-width: 90%;
+        margin: 0 auto;
+      }
+
+      .top-team-members span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .leaderboard-table {
@@ -785,13 +804,19 @@
         container.innerHTML = teams
           .map((team, index) => {
             const ratio = Math.min(team.totalDistance / 420, 1);
-            const size = Math.round(140 + ratio * 100);
+            const size = Math.round(240 + ratio * 100);
+            const memberNames = team.members
+              .map((member) => member.displayName || member.memberName)
+              .slice(0, 5)
+              .map((name) => `<span>${name}</span>`) // one line per member
+              .join('');
 
             return `
               <div class="top-team-node" style="--circle-size:${size}px; --progress:${ratio}">
                 <div class="top-team-rank">#${index + 1}</div>
                 <div class="top-team-name">${team.name}</div>
                 <div class="top-team-distance">${team.totalDistance.toFixed(1)} km</div>
+                <div class="top-team-members">${memberNames}</div>
               </div>
             `;
           })
