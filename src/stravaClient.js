@@ -9,7 +9,7 @@ let cachedAt = 0;
 const DEFAULT_PAGE_SIZE = (() => {
   const parsed = Number.parseInt(process.env.STRAVA_FETCH_PAGE_SIZE, 10);
   if (Number.isFinite(parsed) && parsed > 0) {
-    return Math.min(parsed, 200);
+    return Math.min(parsed, 250);
   }
   return 171; // tuned so the single-page response ends at Remi's baseline activity
 })();
@@ -88,7 +88,9 @@ async function getAccessToken() {
 async function fetchClubActivities() {
   const token = await getAccessToken();
   const perPage = DEFAULT_PAGE_SIZE;
+  console.log("ACTIVITIES PER PAGE:", perPage);
   const maxPages = DEFAULT_MAX_PAGES;
+  console.log("PAGES:", maxPages);
   const aggregated = [];
   let pagesFetched = 0;
   let baselineFound = false;

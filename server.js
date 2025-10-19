@@ -13,10 +13,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/club/activities', async (req, res) => {
   try {
-    const { leaderboard, event } = await getClubLeaderboard();
+    const { leaderboard } = await getClubLeaderboard();
     res.json({
       activities: leaderboard,
-      event,
       cachedAt: getCachedActivities().timestamp
     });
   } catch (error) {

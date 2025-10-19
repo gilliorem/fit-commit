@@ -1,6 +1,4 @@
 const { fetchClubActivities } = require('./stravaClient');
-const { getEventWindow } = require('../config/eventConfig');
-
 function toNumber(value) {
   return Number.isFinite(value) ? value : 0;
 }
@@ -32,32 +30,8 @@ function parseActivityTimestamp(activity) {
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
-function asTimestamp(value) {
-  if (value instanceof Date) {
-    const time = value.getTime();
-    return Number.isNaN(time) ? null : time;
-  }
-
-  if (value != null) {
-    const parsed = Date.parse(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function isoFromTimestamp(timestamp) {
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
-}
-
-function aggregateActivities(activities, sinceTimestamp, untilTimestamp) {
+function aggregateActivities(activities) {
   const athletes = new Map();
-  const lowerBound = Number.isFinite(sinceTimestamp) ? sinceTimestamp : null;
-  const upperBound = Number.isFinite(untilTimestamp) ? untilTimestamp : null;
-  let earliestTimestamp = null;
-  let latestTimestamp = null;
 
   activities.forEach((activity) => {
     if (!(activity?.type === 'Run' || activity?.type === 'Walk')) {
@@ -65,21 +39,6 @@ function aggregateActivities(activities, sinceTimestamp, untilTimestamp) {
     }
 
     const activityTimestamp = parseActivityTimestamp(activity);
-    if (lowerBound != null && (activityTimestamp == null || activityTimestamp < lowerBound)) {
-      return;
-    }
-    if (upperBound != null && (activityTimestamp == null || activityTimestamp > upperBound)) {
-      return;
-    }
-
-    if (activityTimestamp != null) {
-      if (earliestTimestamp == null || activityTimestamp < earliestTimestamp) {
-        earliestTimestamp = activityTimestamp;
-      }
-      if (latestTimestamp == null || activityTimestamp > latestTimestamp) {
-        latestTimestamp = activityTimestamp;
-      }
-    }
 
     const athleteId = activity.athlete?.id ?? `${activity.athlete?.firstname || ''}-${activity.athlete?.lastname || ''}`;
     const nameInfo = selectAthleteName(activity);
@@ -147,40 +106,14 @@ function aggregateActivities(activities, sinceTimestamp, untilTimestamp) {
     })
     .map(({ _first_activity_timestamp: _ignore, ...athlete }) => athlete);
 
-  return {
-    leaderboard,
-    earliestTimestamp,
-    latestTimestamp
-  };
+  return leaderboard;
 }
 
 async function getClubLeaderboard() {
   const activities = await fetchClubActivities();
-  const eventWindow = getEventWindow();
-  const sinceTimestamp = asTimestamp(eventWindow?.start);
-  const untilTimestamp = asTimestamp(eventWindow?.end);
+  const leaderboard = aggregateActivities(activities);
 
-  let stats = aggregateActivities(activities, sinceTimestamp, untilTimestamp);
-
-  if (!stats.leaderboard.length && (sinceTimestamp != null || untilTimestamp != null)) {
-    stats = aggregateActivities(activities, null, null);
-  }
-
-  const eventStartIso = sinceTimestamp != null
-    ? isoFromTimestamp(sinceTimestamp)
-    : isoFromTimestamp(stats.earliestTimestamp);
-
-  const eventEndIso = untilTimestamp != null
-    ? isoFromTimestamp(untilTimestamp)
-    : isoFromTimestamp(stats.latestTimestamp);
-
-  return {
-    leaderboard: stats.leaderboard,
-    event: {
-      start: eventStartIso,
-      end: eventEndIso
-    }
-  };
+  return { leaderboard };
 }
 
 module.exports = {
