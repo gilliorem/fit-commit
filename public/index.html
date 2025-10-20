@@ -167,7 +167,7 @@
       .top-team-node::after {
         content: '';
         position: absolute;
-        inset: -12px;
+        inset: -30px;
         border-radius: 50%;
         background: conic-gradient(
           rgba(34, 212, 217, 0.9) calc(var(--progress) * 360deg),
@@ -197,9 +197,31 @@
       }
 
       .top-team-distance {
-        font-size: 1.5rem;
-        color: var(--text-primary);
+        display: grid;
+        color: var(--accent);
+        font-weight: 800;
+        font-size: 2em;
         margin-bottom: 0.75rem;
+        text-transform: uppercase;
+      }
+
+      .top-team-bonus {
+        display: inline-block;
+        margin-left: 0.4rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--progress-accent);
+      }
+
+      .max-distance {
+        display: inline-block;
+        margin-top: 0.4 rem;
+        margin-left: 0.4rem;
+        font-size: 1.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
       }
 
       .top-team-members {
@@ -271,6 +293,8 @@
 
       .team-card {
         --progress: 0;
+        --progress-color: rgba(255, 215, 95, 0.95);
+        --track-color: rgba(255, 215, 95, 0.22);
         position: relative;
         overflow: hidden;
         background:
@@ -282,15 +306,14 @@
         backdrop-filter: blur(16px);
       }
 
-      .team-card::before {
+      .team-card::before,
+      .team-card::after {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: inherit;
         padding: 2px;
         box-sizing: border-box;
-        background:
-          conic-gradient(from 90deg, rgba(255, 215, 95, 0.95) calc(var(--progress) * 360deg), rgba(255, 215, 95, 0.06) 0deg);
         mask:
           linear-gradient(#000 0 0) content-box,
           linear-gradient(#000 0 0);
@@ -299,13 +322,23 @@
           linear-gradient(#000 0 0) content-box,
           linear-gradient(#000 0 0);
         -webkit-mask-composite: xor;
-        opacity: 0.95;
         pointer-events: none;
-        transition: opacity 0.2s ease;
         z-index: 0;
       }
 
-      .team-card:hover::before {
+      .team-card::before {
+        background: conic-gradient(at 0% 0%, var(--track-color) 360deg);
+        opacity: 0.8;
+      }
+
+      .team-card::after {
+        background:
+          conic-gradient(at 0% 0%, var(--progress-color) calc(var(--progress) * 360deg), rgba(0, 0, 0, 0) 0deg);
+        opacity: 0.95;
+        transition: opacity 0.2s ease;
+      }
+
+      .team-card:hover::after {
         opacity: 1;
       }
 
@@ -336,6 +369,77 @@
         color: var(--progress-accent);
         font-weight: 600;
         text-transform: none;
+      }
+
+      .team-progress {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .team-progress__meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(238, 246, 255, 0.7);
+      }
+
+      .team-progress__track {
+        position: relative;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--track-base, rgba(255, 255, 255, 0.08));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+
+      .team-progress__fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        background: var(--fill-gradient, linear-gradient(90deg, rgba(255, 215, 95, 0.9), rgba(255, 215, 95, 0.6)));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+        transition: width 0.3s ease;
+      }
+
+      .team-progress__goal {
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(139, 161, 196, 0.7);
+      }
+
+      .team-progress__fill--bonus {
+        background: linear-gradient(90deg, rgba(34, 212, 217, 0.95), rgba(34, 212, 217, 0.55));
+        box-shadow: inset 0 0 0 1px rgba(34, 212, 217, 0.35);
+      }
+
+      .team-callout {
+        margin: 0.6rem 0 0;
+        font-size: 0.69rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255, 215, 95, 0.85);
+        text-align: center;
+      }
+
+      .team-callout--bonus {
+        color: rgba(34, 212, 217, 0.92);
+      }
+
+      .team-progress--silver {
+        --track-base: rgba(195, 205, 222, 0.24);
+        --fill-gradient: linear-gradient(90deg, rgba(195, 205, 222, 0.82), rgba(175, 186, 205, 0.62));
+      }
+
+      .team-progress--gold {
+        --track-base: rgba(255, 215, 95, 0.18);
+        --fill-gradient: linear-gradient(90deg, rgba(255, 215, 95, 0.95), rgba(255, 215, 95, 0.6));
       }
 
       .placeholder {
@@ -610,12 +714,34 @@
             return sum + (member.athlete.distance_km || 0);
           }, 0);
 
+          const hasFullRoster = members.length >= 5 && members.every((member) => member.athlete);
+          const bonusKm = hasFullRoster ? 50 : 0;
+          const adjustedDistance = totalDistance + bonusKm;
+
           return {
             name: team.name,
             members,
-            totalDistance
+            totalDistance,
+            adjustedDistance,
+            bonusKm
           };
         });
+      }
+
+      function computeTeamBonusMeta(team) {
+        const members = Array.isArray(team.members) ? team.members : [];
+        const baseDistance = Number(team.totalDistance || 0);
+        const memberCount = members.filter((member) => member.memberName).length;
+        const hasBonus = memberCount >= 5 && members.every((member) => member.athlete);
+        const bonusKm = hasBonus ? 50 : 0;
+        const adjustedDistance = baseDistance + bonusKm;
+
+        return {
+          baseDistance,
+          adjustedDistance,
+          bonusKm,
+          hasBonus
+        };
       }
 
       function renderTopTeams(container, teams) {
@@ -630,20 +756,24 @@
 
         container.innerHTML = teams
           .map((team, index) => {
-            const ratio = Math.min(team.totalDistance / 420, 1);
+            const { adjustedDistance, hasBonus } = computeTeamBonusMeta(team);
+            const ratio = Math.min(adjustedDistance / 420, 1);
             const size = Math.round(240 + ratio * 100);
             const memberNames = team.members
               .map((member) => member.displayName || member.memberName)
               .slice(0, 5)
-              .map((name) => `<span>${name}</span>`) // one line per member
+              .map((name) => `<span>${name}</span>`)
               .join('');
 
+            const displayDistance = adjustedDistance.toFixed(1);
+            const bonusTag = hasBonus ? '<span class="top-team-bonus">+50 km bonus</span>' : '';
             return `
               <div class="top-team-node" style="--circle-size:${size}px; --progress:${ratio}">
                 <div class="top-team-rank">#${index + 1}</div>
                 <div class="top-team-name">${team.name}</div>
-                <div class="top-team-distance">${team.totalDistance.toFixed(1)} km</div>
-                <div class="top-team-members">${memberNames}</div>
+                <div class="top-team-distance">${displayDistance} km${bonusTag} 
+                    <span class="max-distance"> / 420 km</span>
+                </div>
               </div>
             `;
           })
@@ -675,10 +805,13 @@
                 .map((team) => {
                   const isHighlight = highlight.has(team.name);
                   const label = isHighlight ? `${team.name} •` : team.name;
+                  const { adjustedDistance, bonusKm, hasBonus } = computeTeamBonusMeta(team);
+                  const displayDistance = adjustedDistance.toFixed(2);
+                  const bonusTag = hasBonus ? ` (+${bonusKm} km bonus)` : '';
                   return `
                     <tr${isHighlight ? ' class="highlight-team"' : ''}>
                       <td>${label}</td>
-                      <td>${team.totalDistance.toFixed(2)}</td>
+                      <td>${displayDistance}${bonusTag}</td>
                     </tr>
                   `;
                 })
@@ -688,14 +821,26 @@
         `;
       }
 
-      function renderTeams(container, teams, maxDistance = 1) {
-        const cap = Math.max(maxDistance, 1);
+      function renderTeams(container, teams) {
         container.innerHTML = teams
           .map((team) => {
-            const progress = Math.min(Math.max(team.totalDistance / cap, 0), 1);
-            const formattedTotal = team.totalDistance.toFixed(1);
+            const { baseDistance, adjustedDistance, bonusKm, hasBonus } = computeTeamBonusMeta(team);
+            const isUnderHundred = adjustedDistance < 100;
+            const cap = isUnderHundred ? 100 : 420;
+            const baseRatio = Math.min(Math.max(baseDistance / cap, 0), 1);
+            const adjustedRatio = Math.min(Math.max(adjustedDistance / cap, 0), 1);
+            const bonusRatio = Math.max(0, adjustedRatio - baseRatio);
+            const progressColor = isUnderHundred
+              ? 'rgba(192, 192, 192, 0.92)'
+              : 'rgba(255, 215, 95, 0.95)';
+            const trackColor = isUnderHundred
+              ? 'rgba(192, 192, 192, 0.28)'
+              : 'rgba(255, 215, 95, 0.22)';
+            const formattedTotal = adjustedDistance.toFixed(1);
+            const percentage = Math.round(adjustedRatio * 100);
+            const bonusLabel = hasBonus ? ` (+${bonusKm} km bonus)` : '';
             return `
-            <article class="team-card" style="--progress:${progress.toFixed(4)}">
+            <article class="team-card" style="--progress:${adjustedRatio.toFixed(4)}; --progress-color:${progressColor}; --track-color:${trackColor}">
               <h3>${team.name}<span>${formattedTotal} km</span></h3>
               <table class="leaderboard-table">
                 <thead>
@@ -726,6 +871,24 @@
                     .join('')}
                 </tbody>
               </table>
+              <div class="team-progress ${isUnderHundred ? 'team-progress--silver' : 'team-progress--gold'}">
+                <div class="team-progress__meta">
+                  <span>${percentage}%</span>
+                  <span>${cap} km goal</span>
+                </div>
+                <div class="team-progress__track">
+                  <div class="team-progress__fill" style="width: ${(baseRatio * 100).toFixed(2)}%"></div>
+                  ${hasBonus
+                    ? `<div class="team-progress__fill team-progress__fill--bonus" style="left:${(baseRatio * 100).toFixed(2)}%; width:${(bonusRatio * 100).toFixed(2)}%"></div>`
+                    : ''}
+                </div>
+                <div class="team-progress__goal">${adjustedDistance.toFixed(1)} km${bonusLabel} / ${cap} km</div>
+              </div>
+              ${hasBonus
+                ? '<p class="team-callout team-callout--bonus">🏆 50 KMS BONUS UNLOCKED 🏆</p>'
+                : team.members.some((member) => !member.athlete)
+                      ? '<p class="team-callout">🎯 EARN a 50 KM <strong>BONUS</strong> IF EACH TEAM-MEMBER LOG AT LEAST A 1KM-STRAVA-ACTIVITY ! 🎯</p>'
+                  : ''}
             </article>
           `;
           })
@@ -778,16 +941,18 @@
             updateStatus(status, '');
           }
 
-          const sortedByDistance = [...teamsWithStats].sort((a, b) => b.totalDistance - a.totalDistance);
+          const sortedByDistance = [...teamsWithStats].sort((a, b) => {
+            const aMeta = computeTeamBonusMeta(a);
+            const bMeta = computeTeamBonusMeta(b);
+            return bMeta.adjustedDistance - aMeta.adjustedDistance;
+          });
           const topTeams = sortedByDistance.slice(0, 3);
           const topTeamNames = topTeams.map((team) => team.name);
           const remainingChronological = teamsWithStats.filter((team) => !topTeamNames.includes(team.name));
 
           renderTopTeams(topTeamsContainer, topTeams);
           renderTeamDistanceList(globalTeamList, [...topTeams, ...remainingChronological], topTeamNames);
-
-          const maxTeamDistance = Math.max(...teamsWithStats.map((team) => team.totalDistance), 1);
-          renderTeams(teamsContainer, teamsWithStats, maxTeamDistance);
+          renderTeams(teamsContainer, teamsWithStats);
           reportTrackedMembers(teamsWithStats, null);
         } catch (error) {
           console.error(error);
