@@ -15,6 +15,7 @@
         --accent: #22d4d9;
         --accent-soft: rgba(34, 212, 217, 0.2);
         --accent-strong: rgba(34, 212, 217, 0.55);
+        --progress-accent: #ffd75f;
         --border: rgba(55, 95, 124, 0.45);
         --shadow: 0 24px 60px rgba(4, 8, 20, 0.55);
       }
@@ -269,14 +270,48 @@
       }
 
       .team-card {
+        --progress: 0;
+        position: relative;
+        overflow: hidden;
         background:
           radial-gradient(circle at top, rgba(34, 212, 217, 0.18), transparent 60%),
           rgba(10, 21, 35, 0.9);
-        border: 1px solid var(--border);
-        border-radius: 18px;
+        border-radius: 20px;
         padding: 1.4rem;
         box-shadow: var(--shadow);
         backdrop-filter: blur(16px);
+      }
+
+      .team-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 2px;
+        box-sizing: border-box;
+        background:
+          conic-gradient(from 90deg, rgba(255, 215, 95, 0.95) calc(var(--progress) * 360deg), rgba(255, 215, 95, 0.06) 0deg);
+        mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        -webkit-mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        opacity: 0.95;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 0;
+      }
+
+      .team-card:hover::before {
+        opacity: 1;
+      }
+
+      .team-card > * {
+        position: relative;
+        z-index: 1;
       }
 
       .team-card h3 {
@@ -285,10 +320,22 @@
         letter-spacing: 0.18em;
         text-transform: uppercase;
         color: var(--accent);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
       }
 
       .team-card table {
         width: 100%;
+      }
+
+      .team-card h3 span {
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: var(--progress-accent);
+        font-weight: 600;
+        text-transform: none;
       }
 
       .placeholder {
@@ -641,17 +688,20 @@
         `;
       }
 
-      function renderTeams(container, teams) {
+      function renderTeams(container, teams, maxDistance = 1) {
+        const cap = Math.max(maxDistance, 1);
         container.innerHTML = teams
-          .map((team) => `
-            <article class="team-card">
-              <h3>${team.name}</h3>
+          .map((team) => {
+            const progress = Math.min(Math.max(team.totalDistance / cap, 0), 1);
+            const formattedTotal = team.totalDistance.toFixed(1);
+            return `
+            <article class="team-card" style="--progress:${progress.toFixed(4)}">
+              <h3>${team.name}<span>${formattedTotal} km</span></h3>
               <table class="leaderboard-table">
                 <thead>
                   <tr>
                     <th>Name</th>
                     <th>Distance (km)</th>
-                    <th>Avg Speed (km/h)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -662,7 +712,6 @@
                           <tr>
                             <td class="placeholder">${member.displayName}</td>
                             <td class="placeholder">--</td>
-                            <td class="placeholder">--</td>
                           </tr>
                         `;
                       }
@@ -671,7 +720,6 @@
                         <tr>
                           <td>${member.displayName}</td>
                           <td>${member.athlete.distance_km.toFixed(2)}</td>
-                          <td>${member.athlete.avg_speed_kmh.toFixed(2)}</td>
                         </tr>
                       `;
                     })
@@ -679,7 +727,8 @@
                 </tbody>
               </table>
             </article>
-          `)
+          `;
+          })
           .join('');
       }
 
@@ -736,7 +785,9 @@
 
           renderTopTeams(topTeamsContainer, topTeams);
           renderTeamDistanceList(globalTeamList, [...topTeams, ...remainingChronological], topTeamNames);
-          renderTeams(teamsContainer, teamsWithStats);
+
+          const maxTeamDistance = Math.max(...teamsWithStats.map((team) => team.totalDistance), 1);
+          renderTeams(teamsContainer, teamsWithStats, maxTeamDistance);
           reportTrackedMembers(teamsWithStats, null);
         } catch (error) {
           console.error(error);

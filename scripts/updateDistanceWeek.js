@@ -207,11 +207,16 @@ async function main() {
     console.log('[distance-week] Label:', label);
   }
 
-  const activities = await fetchClubActivities();
+  const afterEpochSeconds = Math.floor(startUtc.getTime() / 1000);
+  const activities = await fetchClubActivities({ after: afterEpochSeconds, skipCache: true });
   const filteredActivities = activities.filter((activity) => {
-    const timestamp = Date.parse(activity?.start_date ?? '');
+    const startIso = activity?.start_date || activity?.start_date_local;
+    if (!startIso) {
+      return true; // rely on API 'after' filtering when timestamps are omitted
+    }
+    const timestamp = Date.parse(startIso);
     if (Number.isNaN(timestamp)) {
-      return false;
+      return true;
     }
     return timestamp >= startUtc.getTime() && timestamp < endUtc.getTime();
   });

@@ -85,7 +85,8 @@ async function getAccessToken() {
   return accessToken;
 }
 
-async function fetchClubActivities() {
+async function fetchClubActivities(options = {}) {
+  const { after = null, skipCache = false } = options;
   const token = await getAccessToken();
   const perPage = DEFAULT_PAGE_SIZE;
   console.log("ACTIVITIES PER PAGE:", perPage);
@@ -104,8 +105,13 @@ async function fetchClubActivities() {
   };
 
   for (let page = 1; page <= maxPages; page += 1) {
+    const params = { per_page: perPage, page };
+    if (after != null) {
+      params.after = after;
+    }
+
     const response = await axios.get(`https://www.strava.com/api/v3/clubs/${config.clubId}/activities`, {
-      params: { per_page: perPage, page },
+      params,
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json'
@@ -136,8 +142,10 @@ async function fetchClubActivities() {
     trimToBaseline();
   }
 
-  cachedActivities = aggregated;
-  cachedAt = Date.now();
+  if (!skipCache) {
+    cachedActivities = aggregated;
+    cachedAt = Date.now();
+  }
   const uniqueAthleteCount = aggregated.reduce((set, activity) => {
     const athlete = activity?.athlete || {};
     const identifier = athlete.id != null

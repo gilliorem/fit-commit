@@ -81,8 +81,7 @@ function parseDistancesCsv(content) {
           ? {
               athleteId: null,
               name: memberName,
-              distance_km: Number(distanceValue.toFixed(2)),
-              avg_speed_kmh: 0
+              distance_km: Number(distanceValue.toFixed(2))
             }
           : null
       });
