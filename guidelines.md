@@ -4,6 +4,19 @@ Right now, in order to have an updated list of events I need to load the last 17
 But if someone update an activity right now, I lose the first activity and so on.
 I want a logic where there is a new activity, the block of activities gets bigger so I can load all the activities as it gets more and more activities
 
+### Weekly distance snapshots
+Use `npm run update:week` (or `node scripts/updateDistanceWeek.js`) once the Strava token variables are loaded.
+The script:
+- reads `data/teams.csv` (after overrides) to keep the roster order fixed
+- fetches the current week's run/walk activities via the Strava client (week window defaults to Monday 00:00 UTC unless `FIT_COMMIT_WEEK_START` is set)
+- aggregates distances per member and rewrites `data/distance-week-3.csv`
+
+Optional environment variables:
+- `FIT_COMMIT_WEEK_START` — ISO8601 timestamp (with timezone) for the week's Monday. Example: `2025-01-06T00:00:00+08:00`.
+- `FIT_COMMIT_WEEK_LABEL` — free-form text only logged for tracking.
+
+The script logs unmatched members so you can fix aliases before publishing.
+
 ### DATA 
 console log the nembers of the group each time you call the API so I can compare with the online strava and see if I am up to date
 I miss data of these strava ids: JJ Su, Chris Wan, Neoprana Soemardjan, Abel L, Li Qian Teng, Louisa N, Timberley Ng, Sebby wong, F Lim.
@@ -20,5 +33,4 @@ right now it runs on localhost:3000
 Note that I have my own domain that I can use to host this website
 nrgi.fr
 In that case what do I need in term of files ect through filezilla
-
 

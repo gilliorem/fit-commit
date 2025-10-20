@@ -4,8 +4,9 @@ const path = require('path');
 const TEAMS_CSV_PATH = path.join(__dirname, '..', 'data', 'teams.csv');
 
 const TEAM_OVERRIDES = {
-  'Team 5': ['F Lim', 'Sin Chee Tan', 'Yuchi Chen', 'taung', 'Daryl Ong'],
+  'Team 5': ['Fiona Lim', 'Sin Chee Tan', 'Yuchi Chen', 'Thant Htet Aung', 'Daryl Ong'],
   'Team 19': ['Kaung Myat San', 'Elizabeth Foo', 'Yip Fai Evin Lau', 'Shivani Mariappan', 'xyeo']
+
 };
 
 function normaliseCell(cell) {

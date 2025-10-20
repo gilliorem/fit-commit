@@ -698,28 +698,33 @@
         const globalTeamList = document.getElementById('global-team-list');
         const teamsContainer = document.getElementById('teams-container');
 
-        updateStatus(status, 'Loading activities…');
+        updateStatus(status, 'Loading weekly distances…');
         try {
-          const [activitiesPayload, teamsPayload] = await Promise.all([
-            fetchJson('/api/club/activities'),
-            fetchJson('/api/teams')
-          ]);
+          const payload = await fetchJson('/api/distances');
+          const teamsWithStats = payload.teams || [];
 
-          const athletes = activitiesPayload.activities || [];
-          const teams = teamsPayload.teams || [];
-          const lookup = buildAthleteLookup(athletes);
-
-          if (teams.length === 0) {
-            updateStatus(status, 'No teams configured yet.');
+          if (teamsWithStats.length === 0) {
+            updateStatus(status, 'No distance data available yet.');
             globalContainer.innerHTML = '';
+            topTeamsContainer.innerHTML = '<p class="placeholder">No team activity yet.</p>';
+            globalTeamList.innerHTML = '';
             teamsContainer.innerHTML = '';
             return;
           }
 
-          const teamsWithStats = buildTeamStats(teams, lookup);
-
-          if (athletes.length === 0) {
-            updateStatus(status, 'No walk or run activities found.');
+          if (payload.generatedAt) {
+            const timestamp = new Date(payload.generatedAt);
+            if (Number.isNaN(timestamp.getTime())) {
+              updateStatus(status, '');
+            } else {
+              const formatted = timestamp.toLocaleString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: 'numeric',
+                month: 'short'
+              });
+              updateStatus(status, `Distances updated ${formatted}`);
+            }
           } else {
             updateStatus(status, '');
           }
@@ -732,7 +737,7 @@
           renderTopTeams(topTeamsContainer, topTeams);
           renderTeamDistanceList(globalTeamList, [...topTeams, ...remainingChronological], topTeamNames);
           renderTeams(teamsContainer, teamsWithStats);
-          reportTrackedMembers(teamsWithStats, lookup);
+          reportTrackedMembers(teamsWithStats, null);
         } catch (error) {
           console.error(error);
           updateStatus(status, 'Could not load leaderboard data. Please try again later.', 'error');

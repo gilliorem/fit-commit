@@ -5,6 +5,7 @@ const express = require('express');
 const { getClubLeaderboard } = require('./src/clubService');
 const { getTeams } = require('./src/teamService');
 const { getCachedActivities } = require('./src/stravaClient');
+const { getDistances } = require('./src/distanceService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,16 @@ app.get('/api/teams', (req, res) => {
   } catch (error) {
     console.error('Failed to load teams configuration', error.message);
     res.status(500).json({ error: 'Failed to load teams configuration.' });
+  }
+});
+
+app.get('/api/distances', (req, res) => {
+  try {
+    const payload = getDistances();
+    res.json(payload);
+  } catch (error) {
+    console.error('Failed to load distances CSV', error.message);
+    res.status(500).json({ error: 'Failed to load distances data.' });
   }
 });
 
