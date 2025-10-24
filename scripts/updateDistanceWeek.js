@@ -5,18 +5,23 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-const { fetchClubActivities } = require('../src/stravaClient');
-const { aggregateActivities } = require('../src/activityAggregator');
-const { getTeams } = require('../src/teamService');
-
-const DISTANCE_WEEK_FILE = path.join(__dirname, '..', 'data', 'distance-week-3.csv');
-const WEEK_START_ENV = 'FIT_COMMIT_WEEK_START';
-const WEEK_LABEL_ENV = 'FIT_COMMIT_WEEK_LABEL';
-
 function loadEnv() {
   dotenv.config();
   dotenv.config({ path: path.join(__dirname, '..', '.env.local'), override: true });
 }
+
+loadEnv();
+
+const { fetchClubActivities } = require('../src/stravaClient');
+const { aggregateActivities } = require('../src/activityAggregator');
+const { getTeams } = require('../src/teamService');
+
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const DISTANCE_WEEK_FILE = path.join(DATA_DIR, 'distance-week-3.csv');
+const DISTANCES_FILE = path.join(DATA_DIR, 'distances.csv');
+const WEEKLY_SNAPSHOT_PATTERN = /^distance-week-(\d+)\.csv$/;
+const WEEK_START_ENV = 'FIT_COMMIT_WEEK_START';
+const WEEK_LABEL_ENV = 'FIT_COMMIT_WEEK_LABEL';
 
 function resolveWeekBounds() {
   const explicitStart = process.env[WEEK_START_ENV];
@@ -41,6 +46,118 @@ function resolveWeekBounds() {
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 7);
   return { startUtc: start, endUtc: end };
+}
+
+function splitRow(row, expectedLength) {
+  const cells = row
+    .split(',')
+    .map((cell) => cell.replace(/\r/g, '').trim());
+
+  if (Number.isInteger(expectedLength) && expectedLength > 0) {
+    while (cells.length < expectedLength) {
+      cells.push('');
+    }
+    if (cells.length > expectedLength) {
+      cells.length = expectedLength;
+    }
+  }
+
+  return cells;
+}
+
+function isNumericCell(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const numeric = Number.parseFloat(trimmed);
+  return Number.isFinite(numeric);
+}
+
+function isTotalsRow(cells) {
+  return cells.every((cell) => !cell || isNumericCell(cell));
+}
+
+function formatDistanceCell(value, { zeroAsBlank }) {
+  if (value == null || value === '') {
+    return '';
+  }
+
+  const numeric = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  if (!Number.isFinite(numeric)) {
+    return '';
+  }
+
+  if (zeroAsBlank && numeric === 0) {
+    return '';
+  }
+
+  return numeric.toFixed(2);
+}
+
+function createMatrix(rows, columns, initialValue = 0) {
+  return Array.from({ length: rows }, () => new Array(columns).fill(initialValue));
+}
+
+function getWeeklySnapshotFiles() {
+  if (!fs.existsSync(DATA_DIR)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(DATA_DIR)
+    .map((entry) => {
+      const match = entry.match(WEEKLY_SNAPSHOT_PATTERN);
+      if (!match) {
+        return null;
+      }
+      return {
+        name: entry,
+        week: Number.parseInt(match[1], 10)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.week - b.week)
+    .map((entry) => entry.name);
+}
+
+function accumulateWeeklySnapshot(filePath, accumulator, teamCount, maxMembers) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content
+    .split(/\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+
+  if (lines.length === 0) {
+    return;
+  }
+
+  let rowIndex = 0;
+  for (let lineIndex = 1; lineIndex < lines.length && rowIndex < maxMembers; ) {
+    const nameCells = splitRow(lines[lineIndex], teamCount);
+    if (isTotalsRow(nameCells)) {
+      break;
+    }
+
+    const distanceLine = lineIndex + 1 < lines.length ? lines[lineIndex + 1] : '';
+    const distanceCells = splitRow(distanceLine, teamCount);
+
+    for (let teamIndex = 0; teamIndex < teamCount; teamIndex += 1) {
+      const cellValue = distanceCells[teamIndex];
+      if (!isNumericCell(cellValue)) {
+        continue;
+      }
+      const existing = accumulator[rowIndex][teamIndex] || 0;
+      const nextValue = existing + Number.parseFloat(cellValue);
+      accumulator[rowIndex][teamIndex] = Number(nextValue.toFixed(2));
+    }
+
+    rowIndex += 1;
+    lineIndex += 2;
+  }
 }
 
 function tokenize(value) {
@@ -188,13 +305,55 @@ function formatCsv(teams, perMemberRows, perDistanceRows, totals) {
   lines.push(teams.map((team) => team.name).join(','));
 
   for (let index = 0; index < perMemberRows.length; index += 1) {
-    lines.push(perMemberRows[index].join(','));
-    lines.push(perDistanceRows[index].join(','));
+    const memberLine = perMemberRows[index].map((cell) => cell || '');
+    const distanceLine = perDistanceRows[index].map((value) => formatDistanceCell(value, { zeroAsBlank: true }));
+
+    lines.push(memberLine.join(','));
+    lines.push(distanceLine.join(','));
   }
 
-  lines.push(totals.map((value) => value.toFixed(2)).join(','));
+  const totalsLine = totals.map((value) => formatDistanceCell(value, { zeroAsBlank: false }));
+  lines.push(totalsLine.join(','));
 
   return `${lines.join('\r\n')}\r\n`;
+}
+
+function rebuildCumulativeDistances(teams, memberRows, maxMembers) {
+  const teamCount = teams.length;
+  const snapshotFiles = getWeeklySnapshotFiles();
+
+  if (snapshotFiles.length === 0) {
+    console.warn('[distance-week] No weekly snapshot CSV files found. Skipping cumulative rebuild.');
+    return;
+  }
+
+  const accumulator = createMatrix(maxMembers, teamCount, 0);
+
+  snapshotFiles.forEach((fileName) => {
+    const filePath = path.join(DATA_DIR, fileName);
+    try {
+      accumulateWeeklySnapshot(filePath, accumulator, teamCount, maxMembers);
+    } catch (error) {
+      console.warn(`[distance-week] Skipped malformed snapshot ${fileName}:`, error.message);
+    }
+  });
+
+  const totals = new Array(teamCount).fill(0);
+  for (let teamIndex = 0; teamIndex < teamCount; teamIndex += 1) {
+    let sum = 0;
+    for (let rowIndex = 0; rowIndex < maxMembers; rowIndex += 1) {
+      const value = accumulator[rowIndex][teamIndex];
+      if (Number.isFinite(value)) {
+        sum += value;
+      }
+    }
+    totals[teamIndex] = Number(sum.toFixed(2));
+  }
+
+  const aggregateCsv = formatCsv(teams, memberRows, accumulator, totals);
+  fs.writeFileSync(DISTANCES_FILE, aggregateCsv, 'utf8');
+  console.log('[distance-week] Wrote', DISTANCES_FILE);
+  console.log('[distance-week] Frontpage data refreshed from snapshots:', snapshotFiles.join(', '));
 }
 
 async function main() {
@@ -232,8 +391,8 @@ async function main() {
   const usedIds = new Set();
 
   const maxMembers = teams.reduce((max, team) => Math.max(max, team.members.length), 0);
-  const memberRows = Array.from({ length: maxMembers }, () => []);
-  const distanceRows = Array.from({ length: maxMembers }, () => []);
+  const memberRows = createMatrix(maxMembers, teams.length, '');
+  const distanceRows = createMatrix(maxMembers, teams.length, null);
   const totals = new Array(teams.length).fill(0);
   const membershipSummary = new Map();
 
@@ -247,7 +406,7 @@ async function main() {
       memberRows[rowIndex][teamIndex] = memberName;
 
       if (!memberName) {
-        distanceRows[rowIndex][teamIndex] = '';
+        distanceRows[rowIndex][teamIndex] = null;
         continue;
       }
 
@@ -255,20 +414,26 @@ async function main() {
       if (match) {
         usedIds.add(match.athleteId);
         totals[teamIndex] += match.distance_km;
-        distanceRows[rowIndex][teamIndex] = match.distance_km.toFixed(2);
+        distanceRows[rowIndex][teamIndex] = match.distance_km;
       } else {
-        distanceRows[rowIndex][teamIndex] = '';
+        distanceRows[rowIndex][teamIndex] = null;
       }
 
       membershipSummary.get(team.name).push({ member: memberName, match });
     }
   });
 
+  for (let teamIndex = 0; teamIndex < totals.length; teamIndex += 1) {
+    totals[teamIndex] = Number(totals[teamIndex].toFixed(2));
+  }
+
   summariseUnmatched(membershipSummary);
 
   const csv = formatCsv(teams, memberRows, distanceRows, totals);
   fs.writeFileSync(DISTANCE_WEEK_FILE, csv, 'utf8');
   console.log('[distance-week] Wrote', DISTANCE_WEEK_FILE);
+
+  rebuildCumulativeDistances(teams, memberRows, maxMembers);
 }
 
 main().catch((error) => {
