@@ -17,11 +17,37 @@ const { aggregateActivities } = require('../src/activityAggregator');
 const { getTeams } = require('../src/teamService');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DISTANCE_WEEK_FILE = path.join(DATA_DIR, 'distance-week-3.csv');
 const DISTANCES_FILE = path.join(DATA_DIR, 'distances.csv');
 const WEEKLY_SNAPSHOT_PATTERN = /^distance-week-(\d+)\.csv$/;
 const WEEK_START_ENV = 'FIT_COMMIT_WEEK_START';
 const WEEK_LABEL_ENV = 'FIT_COMMIT_WEEK_LABEL';
+const WEEK_FILE_ENV = 'FIT_COMMIT_WEEK_FILE';
+const WEEK_NUMBER_ENV = 'FIT_COMMIT_WEEK_NUMBER';
+
+function resolveDistanceWeekFile() {
+  const explicitFile = (process.env[WEEK_FILE_ENV] || '').trim();
+  if (explicitFile) {
+    return path.join(DATA_DIR, explicitFile);
+  }
+
+  const explicitNumber = (process.env[WEEK_NUMBER_ENV] || '').trim();
+  if (explicitNumber) {
+    const parsed = Number.parseInt(explicitNumber, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error(
+        `Unable to parse ${WEEK_NUMBER_ENV}=${explicitNumber}. Provide a positive integer week number.`
+      );
+    }
+    return path.join(DATA_DIR, `distance-week-${parsed}.csv`);
+  }
+
+  const snapshotFiles = getWeeklySnapshotFiles();
+  if (snapshotFiles.length === 0) {
+    return path.join(DATA_DIR, 'distance-week-1.csv');
+  }
+
+  return path.join(DATA_DIR, snapshotFiles[snapshotFiles.length - 1]);
+}
 
 function resolveWeekBounds() {
   const explicitStart = process.env[WEEK_START_ENV];
@@ -360,11 +386,13 @@ async function main() {
   loadEnv();
   const { startUtc, endUtc } = resolveWeekBounds();
   const label = process.env[WEEK_LABEL_ENV] || '';
+  const distanceWeekFile = resolveDistanceWeekFile();
 
   console.log('[distance-week] Resolved week window:', startUtc.toISOString(), '->', endUtc.toISOString());
   if (label) {
     console.log('[distance-week] Label:', label);
   }
+  console.log('[distance-week] Snapshot file:', path.basename(distanceWeekFile));
 
   const afterEpochSeconds = Math.floor(startUtc.getTime() / 1000);
   const activities = await fetchClubActivities({ after: afterEpochSeconds, skipCache: true });
@@ -430,8 +458,8 @@ async function main() {
   summariseUnmatched(membershipSummary);
 
   const csv = formatCsv(teams, memberRows, distanceRows, totals);
-  fs.writeFileSync(DISTANCE_WEEK_FILE, csv, 'utf8');
-  console.log('[distance-week] Wrote', DISTANCE_WEEK_FILE);
+  fs.writeFileSync(distanceWeekFile, csv, 'utf8');
+  console.log('[distance-week] Wrote', distanceWeekFile);
 
   rebuildCumulativeDistances(teams, memberRows, maxMembers);
 }
