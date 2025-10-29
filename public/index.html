@@ -179,6 +179,23 @@
         z-index: -1;
       }
 
+      .top-team-node--goal::before {
+        border-color: rgba(255, 215, 95, 0.55);
+        box-shadow: 0 0 22px rgba(255, 215, 95, 0.4);
+      }
+
+      .top-team-node--goal::after {
+        background: conic-gradient(
+          rgba(255, 215, 95, 0.92) calc(var(--progress) * 360deg),
+          rgba(255, 215, 95, 0.15) 0deg
+        );
+      }
+
+      .top-team-node--goal .top-team-name,
+      .top-team-node--goal .top-team-distance {
+        color: #ffd75f;
+      }
+
       .top-team-rank {
         font-size: 1.5rem;
         font-weight: 800;
@@ -745,7 +762,7 @@
         };
       }
 
-      function renderTopTeams(container, teams) {
+      function renderTopTeams(container, teams, goalTeamName) {
         if (!container) {
           return;
         }
@@ -760,16 +777,13 @@
             const { adjustedDistance, hasBonus } = computeTeamBonusMeta(team);
             const ratio = Math.min(adjustedDistance / 420, 1);
             const size = Math.round(240 + ratio * 100);
-            const memberNames = team.members
-              .map((member) => member.displayName || member.memberName)
-              .slice(0, 5)
-              .map((name) => `<span>${name}</span>`)
-              .join('');
-
+            const hasReachedGoal = adjustedDistance >= 420;
+            const isGoalLeader = Boolean(goalTeamName && team.name === goalTeamName && hasReachedGoal);
             const displayDistance = adjustedDistance.toFixed(1);
             const bonusTag = hasBonus ? '<span class="top-team-bonus">+50 km bonus</span>' : '';
+            const nodeClass = `top-team-node${isGoalLeader ? ' top-team-node--goal' : ''}`;
             return `
-              <div class="top-team-node" style="--circle-size:${size}px; --progress:${ratio}">
+              <div class="${nodeClass}" style="--circle-size:${size}px; --progress:${ratio}">
                 <div class="top-team-rank">#${index + 1}</div>
                 <div class="top-team-name">${team.name}</div>
                 <div class="top-team-distance">${displayDistance} km${bonusTag} 
@@ -948,10 +962,12 @@
             return bMeta.adjustedDistance - aMeta.adjustedDistance;
           });
           const topTeams = sortedByDistance.slice(0, 3);
+          const firstGoalTeam = sortedByDistance.find((team) => computeTeamBonusMeta(team).adjustedDistance >= 420);
+          const goalTeamName = firstGoalTeam ? firstGoalTeam.name : null;
           const topTeamNames = topTeams.map((team) => team.name);
           const remainingChronological = teamsWithStats.filter((team) => !topTeamNames.includes(team.name));
 
-          renderTopTeams(topTeamsContainer, topTeams);
+          renderTopTeams(topTeamsContainer, topTeams, goalTeamName);
           renderTeamDistanceList(globalTeamList, [...topTeams, ...remainingChronological], topTeamNames);
           renderTeams(teamsContainer, teamsWithStats);
           reportTrackedMembers(teamsWithStats, null);
